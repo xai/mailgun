@@ -321,6 +321,12 @@ func sendMail(config *Config, mail Mail, outputFile string, dryrun bool) {
 
 	// store mail to output directory
 	if outputFile != "" {
+		i := 0
+		// make sure nothing is overwritten in target destination
+		for _, err := os.Stat(outputFile); err == nil; i++ {
+			outputFile = filepath.Join(filepath.Dir(outputFile), fmt.Sprintf("%d.eml", i))
+			_, err = os.Stat(outputFile)
+		}
 		eml, err := os.Create(outputFile)
 		if err != nil {
 			ErrorLogger.Fatal(err)

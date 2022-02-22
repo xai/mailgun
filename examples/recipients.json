@@ -1,0 +1,23 @@
+[
+  {
+    "realname": "John Doe",
+    "email": "john.doe@example.com",
+    "attachments": [
+      {
+        "path": "attachments/invoice-john.pdf",
+        "type": "application/pdf",
+        "charset": "binary"
+      }
+    ],
+    "variables": [
+      {
+        "name": "%RECIPIENT%",
+        "value": "John"
+      },
+      {
+        "name": "%URL%",
+        "value": "https://github.com/xai/xmailgun"
+      }
+    ]
+  }
+]

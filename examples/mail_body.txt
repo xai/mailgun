@@ -1,0 +1,9 @@
+Hello %RECIPIENT%,
+
+Here comes the mail body.
+
+You can provide additional variables and edit them in the recipients file:
+Come find the source code at %URL%!
+
+Kind regards,
+Mailgun

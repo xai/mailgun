@@ -17,10 +17,15 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+	"unicode"
+
+	"golang.org/x/text/runes"
+	"golang.org/x/text/transform"
+	"golang.org/x/text/unicode/norm"
 )
 
 const Name = "xmailgun"
-const Version = "1.0.1"
+const Version = "1.0.2"
 const UserAgent string = Name + "/" + Version
 
 type Config struct {
@@ -193,6 +198,24 @@ func adjustFilePath(referenceFile *string, targetFile *string) string {
 	return filepath.Join(filepath.Dir(*referenceFile), *targetFile)
 }
 
+func normalizeFileName(fileName string) string {
+	fileName = strings.Replace(fileName, "Ä", "Áe", -1)
+	fileName = strings.Replace(fileName, "ä", "ae", -1)
+	fileName = strings.Replace(fileName, "Ö", "Oe", -1)
+	fileName = strings.Replace(fileName, "ö", "oe", -1)
+	fileName = strings.Replace(fileName, "Ü", "Ue", -1)
+	fileName = strings.Replace(fileName, "ü", "ue", -1)
+	fileName = strings.Replace(fileName, "ß", "ss", -1)
+	fileName = strings.Replace(fileName, "$", "S", -1)
+	t := transform.Chain(norm.NFD, runes.Remove(runes.In(unicode.Mn)), norm.NFC)
+	normalizedFileName, _, err := transform.String(t, fileName)
+	if err != nil {
+		ErrorLogger.Fatal(err)
+	}
+
+	return normalizedFileName
+}
+
 func buildMessage(mail Mail) []byte {
 	var buf bytes.Buffer
 
@@ -259,13 +282,16 @@ func buildMessage(mail Mail) []byte {
 	for i := range mail.Attachments {
 		attachment := mail.Attachments[i]
 
+		// adjust filenames to be SMTP-friendly
+		fileName := normalizeFileName(filepath.Base(attachment.Path))
+
 		pw, err := mw.CreatePart(textproto.MIMEHeader{
 			"Content-Type": {
 				fmt.Sprintf("%s; charset=\"%s\"", attachment.Type, attachment.Charset),
 			},
 			"Content-Transfer-Encoding": {"base64"},
 			"Content-Disposition": {
-				fmt.Sprintf("attachment; filename=\"%s\"", filepath.Base(attachment.Path)),
+				fmt.Sprintf("attachment; filename=\"%s\"", fileName),
 			},
 		})
 

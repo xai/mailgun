@@ -19,3 +19,6 @@ configs/
 
 # Local logfile
 xmailgun.log
+
+# IDE stuff
+.vscode/

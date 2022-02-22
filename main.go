@@ -148,7 +148,7 @@ func getTask(jsonFile *string) *Task {
 	}
 
 	if err != nil {
-		ErrorLogger.Printf("task file could not be read", *jsonFile)
+		ErrorLogger.Printf("task file could not be read")
 		ErrorLogger.Fatal(err)
 	}
 

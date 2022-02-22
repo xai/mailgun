@@ -20,7 +20,7 @@ import (
 )
 
 const Name = "xmailgun"
-const Version = "1.0.0"
+const Version = "1.0.1"
 const UserAgent string = Name + "/" + Version
 
 type Config struct {
@@ -83,6 +83,7 @@ var (
 
 	smtpConfigFile = ""
 	taskFile       = ""
+	outputDir      = ""
 	dryRun         = false
 
 	countdown = 30
@@ -92,6 +93,7 @@ var (
 func init() {
 	flag.StringVar(&smtpConfigFile, "config", "", "configuration file for smtp connection (json)")
 	flag.StringVar(&taskFile, "task", "", "task file (json)")
+	flag.StringVar(&outputDir, "output", "", "output directory for storing .eml files")
 	flag.BoolVar(&dryRun, "dryrun", false, "do not actually send mails")
 
 	file, err := os.OpenFile(Name+".log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
@@ -285,11 +287,21 @@ func buildMessage(mail Mail) []byte {
 	return buf.Bytes()
 }
 
-func sendMail(config *Config, mail Mail, dryrun bool) {
+func sendMail(config *Config, mail Mail, outputFile string, dryrun bool) {
 	msg := buildMessage(mail)
 
 	// Use [To...,Cc...,Bcc...] as RCPT TO, difference is resembled in mail header
 	var rcptTo string = strings.Join(append(append(append([]string{}, mail.To...), mail.Cc...), mail.Bcc...), ",")
+
+	// store mail to output directory
+	if outputFile != "" {
+		eml, err := os.Create(outputFile)
+		if err != nil {
+			ErrorLogger.Fatal(err)
+		}
+		eml.Write(msg)
+		eml.Close()
+	}
 
 	if dryrun {
 		fmt.Println(string(msg))
@@ -477,7 +489,12 @@ func main() {
 			fmt.Println("Fire!")
 		}
 
-		sendMail(config, mails[i], dryRun)
+		outputFile := ""
+		if outputDir != "" {
+			outputFile = filepath.Join(outputDir, fmt.Sprintf("%d.eml", i))
+		}
+
+		sendMail(config, mails[i], outputFile, dryRun)
 		if dryRun {
 			fmt.Printf("> %d of %d mails NOT sent (dry-run)\n", i+1, len(mails))
 		} else {

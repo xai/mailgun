@@ -25,7 +25,7 @@ import (
 )
 
 const Name = "xmailgun"
-const Version = "1.0.3"
+const Version = "1.0.4"
 const UserAgent string = Name + "/" + Version
 
 type Config struct {
@@ -78,6 +78,8 @@ type Task struct {
 	Charset       string       `json:"charset"`
 	Recipientfile string       `json:"recipientfile"`
 	Attachments   []Attachment `json:"attachments"`
+	Cooldown      int          `json:"cooldown"`
+	Countdown     int          `json:"safetycountdown"`
 }
 
 var (
@@ -166,6 +168,26 @@ func getTask(jsonFile *string) *Task {
 		ErrorLogger.Fatal(
 			"required fields for task: name, sender, username, recipientfile, bodytemplate",
 		)
+	}
+
+	if task.Cooldown != 0 {
+		if dryRun {
+			WarningLogger.Println("task-specific cooldown not active when -dryrun is specified")
+		}
+		cooldown = task.Cooldown
+	}
+
+	var safetyThreshold int = 10
+	if task.Countdown != 0 {
+		if task.Countdown < safetyThreshold {
+			ErrorLogger.Fatalf("safety countdown < %d s not supported", safetyThreshold)
+		}
+		if dryRun {
+			WarningLogger.Println(
+				"task-specific safety countdown not active when -dryrun is specified",
+			)
+		}
+		countdown = task.Countdown
 	}
 
 	task.Recipientfile = adjustFilePath(jsonFile, &task.Recipientfile)
@@ -542,6 +564,7 @@ func main() {
 		fmt.Printf("         To: \"%s\"\n", task.Recipientfile)
 		fmt.Printf("         Text: \"%s\"\n\n", task.Bodytemplate)
 		fmt.Printf("If you made ANY mistake, %d people will be angry at you.\n\n", totalMails)
+		fmt.Printf("We will give you a countdown from %d seconds to reconsider.\n\n", countdown)
 		fmt.Printf("This is your last chance to cancel. Press Ctrl-C to cancel.\n\n")
 
 		for i := countdown; i >= 0; i-- {
@@ -554,6 +577,17 @@ func main() {
 
 	fmt.Println("Fire!")
 	for i := range mails {
+		outputFile := ""
+		if outputDir != "" {
+			outputFile = filepath.Join(outputDir, fmt.Sprintf("%d.eml", i))
+		}
+
+		sendMail(config, mails[i], outputFile, dryRun)
+		if dryRun {
+			fmt.Printf("> %d of %d mails NOT sent (dry-run)\n", i+1, len(mails))
+		} else {
+			fmt.Printf("> %d of %d mails sent\n", i+1, len(mails))
+		}
 
 		// recovery phase to prevent triggering spam detection of smtp server
 		if !dryRun && (i+1)%cooldown == 0 {
@@ -570,17 +604,6 @@ func main() {
 			fmt.Println("Fire!")
 		}
 
-		outputFile := ""
-		if outputDir != "" {
-			outputFile = filepath.Join(outputDir, fmt.Sprintf("%d.eml", i))
-		}
-
-		sendMail(config, mails[i], outputFile, dryRun)
-		if dryRun {
-			fmt.Printf("> %d of %d mails NOT sent (dry-run)\n", i+1, len(mails))
-		} else {
-			fmt.Printf("> %d of %d mails sent\n", i+1, len(mails))
-		}
 	}
 
 }

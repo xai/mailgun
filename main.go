@@ -25,7 +25,7 @@ import (
 )
 
 const Name = "xmailgun"
-const Version = "1.0.2"
+const Version = "1.0.3"
 const UserAgent string = Name + "/" + Version
 
 type Config struct {
@@ -83,13 +83,15 @@ type Task struct {
 var (
 	err error
 
-	DebugLogger *log.Logger
-	ErrorLogger *log.Logger
+	DebugLogger   *log.Logger
+	WarningLogger *log.Logger
+	ErrorLogger   *log.Logger
 
 	smtpConfigFile = ""
 	taskFile       = ""
 	outputDir      = ""
 	dryRun         = false
+	printVersion   = false
 
 	countdown = 30
 	cooldown  = 30
@@ -100,6 +102,7 @@ func init() {
 	flag.StringVar(&taskFile, "task", "", "task file (json)")
 	flag.StringVar(&outputDir, "output", "", "output directory for storing .eml files")
 	flag.BoolVar(&dryRun, "dryrun", false, "do not actually send mails")
+	flag.BoolVar(&printVersion, "v", false, "print version and exit")
 
 	file, err := os.OpenFile(Name+".log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
 	if err != nil {
@@ -109,6 +112,7 @@ func init() {
 	mw := io.MultiWriter(os.Stdout, file)
 
 	DebugLogger = log.New(file, "Debug: ", log.Ldate|log.Ltime|log.Lshortfile)
+	WarningLogger = log.New(mw, "Warning: ", log.Ldate|log.Ltime|log.Lshortfile)
 	ErrorLogger = log.New(mw, "Error: ", log.Ldate|log.Ltime|log.Lshortfile)
 
 }
@@ -126,6 +130,11 @@ func getSmtpConfig(jsonFile *string) *Config {
 	if err != nil {
 		ErrorLogger.Printf("config file could not be read")
 		ErrorLogger.Fatal(err)
+	}
+
+	if config.Host == "" || config.Port == 0 || config.Username == "" || config.Password == "" ||
+		config.Type == "" {
+		ErrorLogger.Fatal("required fields for config: hostname, port, username, password, type")
 	}
 
 	DebugLogger.Printf(
@@ -152,13 +161,24 @@ func getTask(jsonFile *string) *Task {
 		ErrorLogger.Fatal(err)
 	}
 
+	if task.Name == "" || task.Sender == "" || task.Subject == "" || task.Recipientfile == "" ||
+		task.Bodytemplate == "" {
+		ErrorLogger.Fatal(
+			"required fields for task: name, sender, username, recipientfile, bodytemplate",
+		)
+	}
+
 	task.Recipientfile = adjustFilePath(jsonFile, &task.Recipientfile)
 	task.Bodytemplate = adjustFilePath(jsonFile, &task.Bodytemplate)
 
 	// adjust file paths
 	attachments := task.Attachments
 	for i := range attachments {
-		attachments[i].Path = adjustFilePath(jsonFile, &attachments[i].Path)
+		attachment := attachments[i]
+		if attachment.Path == "" || attachment.Type == "" {
+			ErrorLogger.Fatal("required fields for attachment: path and type")
+		}
+		attachment.Path = adjustFilePath(jsonFile, &attachment.Path)
 	}
 
 	DebugLogger.Printf("Loaded %s task \"%s\" from \"%s\"\n", Name, task.Name, *jsonFile)
@@ -181,11 +201,23 @@ func getRecipients(jsonFile *string) []Recipient {
 		ErrorLogger.Fatal(err)
 	}
 
+	if len(recipients) == 0 {
+		WarningLogger.Println("zero recipients specified")
+	}
+
 	// adjust file paths
 	for i := range recipients {
-		attachments := recipients[i].Attachments
+		recipient := recipients[i]
+		if recipient.Email == "" {
+			ErrorLogger.Fatal("required field for recipient: email")
+		}
+		attachments := recipient.Attachments
 		for j := range attachments {
-			attachments[j].Path = adjustFilePath(jsonFile, &attachments[j].Path)
+			attachment := attachments[j]
+			if attachment.Path == "" || attachment.Type == "" {
+				ErrorLogger.Fatal("required fields for attachment: path and type")
+			}
+			attachment.Path = adjustFilePath(jsonFile, &attachment.Path)
 		}
 	}
 
@@ -317,7 +349,13 @@ func sendMail(config *Config, mail Mail, outputFile string, dryrun bool) {
 	msg := buildMessage(mail)
 
 	// Use [To...,Cc...,Bcc...] as RCPT TO, difference is resembled in mail header
-	var rcptTo string = strings.Join(append(append(append([]string{}, mail.To...), mail.Cc...), mail.Bcc...), ",")
+	var allRecipients = append(append(append([]string{}, mail.To...), mail.Cc...), mail.Bcc...)
+
+	if len(allRecipients) == 0 {
+		ErrorLogger.Fatal("the must be at least one recipient in To, Cc, or Bcc!")
+	}
+
+	var rcptTo string = strings.Join(allRecipients, ",")
 
 	// store mail to output directory
 	if outputFile != "" {
@@ -409,6 +447,12 @@ func sendMail(config *Config, mail Mail, outputFile string, dryrun bool) {
 func getBody(fileName *string) []byte {
 	var template []byte
 
+	fInfo, err := os.Stat(*fileName)
+
+	if err != nil || fInfo.Size() == 0 {
+		ErrorLogger.Fatal("body template must exist and be a non-empty file!")
+	}
+
 	template, err = ioutil.ReadFile(*fileName)
 
 	if err != nil {
@@ -419,7 +463,6 @@ func getBody(fileName *string) []byte {
 	DebugLogger.Printf("Loaded body template from \"%s\"\n", *fileName)
 
 	return template
-
 }
 
 func processTemplate(template []byte, recipient Recipient) string {
@@ -439,15 +482,21 @@ func processTemplate(template []byte, recipient Recipient) string {
 }
 
 func main() {
-	DebugLogger.Println("Starting the application...")
 
 	flag.Parse()
+
+	if printVersion {
+		os.Stderr.WriteString(UserAgent + "\n")
+		os.Exit(0)
+	}
 
 	if smtpConfigFile == "" || taskFile == "" {
 		ErrorLogger.Print("Mandatory argument not provided. Exiting.\n\n")
 		flag.Usage()
 		os.Exit(1)
 	}
+
+	DebugLogger.Println("Starting the application...")
 
 	config := getSmtpConfig(&smtpConfigFile)
 

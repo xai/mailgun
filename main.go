@@ -562,7 +562,7 @@ func main() {
 		fmt.Printf("         Bcc: \"%s\"\n", task.Bcc)
 		fmt.Printf("         Global attachments: %d\n", len(task.Attachments))
 		fmt.Printf("         To: \"%s\"\n", task.Recipientfile)
-		fmt.Printf("         Text: \"%s\"\n\n", task.Bodytemplate)
+		fmt.Printf("         Body template: \"%s\"\n\n", task.Bodytemplate)
 		fmt.Printf("If you made ANY mistake, %d people will be angry at you.\n\n", totalMails)
 		fmt.Printf("We will give you a countdown from %d seconds to reconsider.\n\n", countdown)
 		fmt.Printf("This is your last chance to cancel. Press Ctrl-C to cancel.\n\n")
@@ -584,10 +584,14 @@ func main() {
 
 		sendMail(config, mails[i], outputFile, dryRun)
 		if dryRun {
-			fmt.Printf("> %d of %d mails NOT sent (dry-run)\n", i+1, len(mails))
+			fmt.Printf("> %d of %d mails NOT sent (dry-run)", i+1, len(mails))
 		} else {
-			fmt.Printf("> %d of %d mails sent\n", i+1, len(mails))
+			fmt.Printf("> %d of %d mails sent", i+1, len(mails))
 		}
+		if len(mails[i].To) == 1 {
+			fmt.Printf(" to %s", mails[i].To[0])
+		}
+		fmt.Print("\n")
 
 		// recovery phase to prevent triggering spam detection of smtp server
 		if !dryRun && (i+1)%cooldown == 0 {

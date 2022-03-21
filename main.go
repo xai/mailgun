@@ -25,7 +25,7 @@ import (
 )
 
 const Name = "xmailgun"
-const Version = "1.0.5"
+const Version = "1.0.6"
 const UserAgent string = Name + "/" + Version
 
 type Config struct {
@@ -584,9 +584,9 @@ func main() {
 
 		sendMail(config, mails[i], outputFile, dryRun)
 		if dryRun {
-			fmt.Printf("> %d of %d mails NOT sent (dry-run)", i+1, len(mails))
+			fmt.Printf("> mail %d of %d NOT sent (dry-run)", i+1, len(mails))
 		} else {
-			fmt.Printf("> %d of %d mails sent", i+1, len(mails))
+			fmt.Printf("> mail %d of %d sent", i+1, len(mails))
 		}
 		if len(mails[i].To) == 1 {
 			fmt.Printf(" to %s", mails[i].To[0])
@@ -594,14 +594,18 @@ func main() {
 		fmt.Print("\n")
 
 		// recovery phase to prevent triggering spam detection of smtp server
-		if !dryRun && (i+1)%cooldown == 0 {
+		if (i+1) < len(mails) && (i+1)%cooldown == 0 {
 			fmt.Printf(
 				"\nAutomatic cooldown for %d minutes to let smtp server recover.\n\n",
 				cooldown,
 			)
-			for i := cooldown; i >= 0; i-- {
-				fmt.Printf("\033[2K\rRemaining in recovery phase for %d minutes", i)
-				time.Sleep(1 * time.Minute)
+			if !dryRun {
+				for i := cooldown; i >= 0; i-- {
+					fmt.Printf("\033[2K\rRemaining in recovery phase for %d minutes", i)
+					time.Sleep(1 * time.Minute)
+				}
+			} else {
+				fmt.Printf("dry-run: cooldown skipped")
 			}
 
 			fmt.Print("\n\n")

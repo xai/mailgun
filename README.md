@@ -37,3 +37,9 @@ Also, do not abuse this tool for spamming!
 You can specify `-dryrun` to print the mails to stdout instead of handing them to the specified smtp server.  
 If you do not specify `-dryrun`, a safety countdown is started to give you the chance of cancelling the bulk mailing.  
 After sending a bunch of mails, the tool will automatically enter a cooldown phase to give the smtp server time to recover and to avoid triggering spam prevention measurements.
+
+## A note to avoid potential confusion due to my tool's name
+Please not that `xmailgun` is **not** affiliated in any way with the company "mailgun" or their service.
+
+`xmailgun` is a standalone tool that I just happened to name in a similar way due to its mass mailing functionality.
+It creates and issues SMTP requests locally without using any external services.

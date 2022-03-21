@@ -25,7 +25,7 @@ import (
 )
 
 const Name = "xmailgun"
-const Version = "1.0.4"
+const Version = "1.0.5"
 const UserAgent string = Name + "/" + Version
 
 type Config struct {
@@ -377,8 +377,6 @@ func sendMail(config *Config, mail Mail, outputFile string, dryrun bool) {
 		ErrorLogger.Fatal("the must be at least one recipient in To, Cc, or Bcc!")
 	}
 
-	var rcptTo string = strings.Join(allRecipients, ",")
-
 	// store mail to output directory
 	if outputFile != "" {
 		i := 0
@@ -397,7 +395,7 @@ func sendMail(config *Config, mail Mail, outputFile string, dryrun bool) {
 
 	if dryrun {
 		fmt.Println(string(msg))
-		DebugLogger.Printf("dryrun: not sending mail to %s", rcptTo)
+		DebugLogger.Printf("dryrun: not sending mail to %s", allRecipients)
 		return
 	}
 
@@ -446,8 +444,10 @@ func sendMail(config *Config, mail Mail, outputFile string, dryrun bool) {
 	}
 
 	// RCPT TO
-	if err = client.Rcpt(rcptTo); err != nil {
-		ErrorLogger.Fatal(err)
+	for i := range allRecipients {
+		if err = client.Rcpt(allRecipients[i]); err != nil {
+			ErrorLogger.Fatal(err)
+		}
 	}
 
 	// DATA
@@ -463,7 +463,7 @@ func sendMail(config *Config, mail Mail, outputFile string, dryrun bool) {
 
 	client.Quit()
 
-	DebugLogger.Printf("Sent mail to %s", rcptTo)
+	DebugLogger.Printf("Sent mail to %s", allRecipients)
 }
 
 func getBody(fileName *string) []byte {
@@ -535,7 +535,7 @@ func main() {
 			Sender:      task.Sender,
 			To:          []string{recipient.Email},
 			Cc:          task.Cc,
-			Bcc:         []string{},
+			Bcc:         task.Bcc,
 			ReplyTo:     task.ReplyTo,
 			Subject:     task.Subject,
 			Text:        processTemplate(template, recipient),
@@ -558,8 +558,8 @@ func main() {
 		fmt.Printf("         Subject: \"%s\"\n\n", task.Subject)
 		fmt.Printf("         From: \"%s\"\n", task.Sender)
 		fmt.Printf("         Reply-To: \"%s\"\n", task.ReplyTo)
-		fmt.Printf("         Cc: \"%s\"\n", task.Cc)
-		fmt.Printf("         Bcc: \"%s\"\n", task.Bcc)
+		fmt.Printf("         Cc: \"%s\"\n", strings.Join(task.Cc, ","))
+		fmt.Printf("         Bcc: \"%s\"\n", strings.Join(task.Bcc, ","))
 		fmt.Printf("         Global attachments: %d\n", len(task.Attachments))
 		fmt.Printf("         To: \"%s\"\n", task.Recipientfile)
 		fmt.Printf("         Body template: \"%s\"\n\n", task.Bodytemplate)

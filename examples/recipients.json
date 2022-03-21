@@ -11,11 +11,11 @@
     ],
     "variables": [
       {
-        "name": "%RECIPIENT%",
+        "name": "%FIRSTNAME%",
         "value": "John"
       },
       {
-        "name": "%URL%",
+        "name": "%SOMEURL%",
         "value": "https://github.com/xai/xmailgun"
       }
     ]

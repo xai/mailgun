@@ -1,0 +1,43 @@
+.TH XMAILGUN 1 "March 2022" "xmailgun 1.0.6" "User Commands"
+.SH NAME
+xmailgun \- command-line tool for sending bulk emails
+.SH SYNOPSIS
+xmailgun [\-config file] [\-task file] [\-output dir] [\-dryrun] [\-v]
+.SH DESCRIPTION
+xmailgun is a command-line tool for sending bulk emails. It allows you to configure your SMTP connection settings and create templates for the emails you want to send. You can then use xmailgun to send bulk emails by specifying a list of recipients and the template you want to use.
+
+xmailgun is licensed under the GNU General Public License version 3 (GPLv3).
+.SH OPTIONS
+.TP
+.B \-config file
+Specifies the configuration file for the SMTP connection in JSON format. This file should contain everything needed to contact the SMTP server. It should not be committed to a repository.
+.TP
+.B \-task file
+Specifies the task file in JSON format. The task file contains variables that are applied to all emails, such as the sender and subject. It also specifies the file path to the mail body template and the recipient file.
+.TP
+.B \-output dir
+Specifies the output directory for storing .eml files.
+.TP
+.B \-dryrun
+Do not actually send the emails. This can be used for testing purposes.
+.TP
+.B \-v
+Prints the version number and exits.
+.SH EXAMPLES
+To send emails using xmailgun, you will need to create a configuration file, a task file, a mail body template, and a recipients list. Here is an example of how to use xmailgun to send emails:
+
+$ xmailgun \-config config.json \-task task.json \-output outdir
+.SH AUTHOR
+xmailgun was written in Go by Olaf Lessenich.
+.SH COPYRIGHT
+Copyright 2022 Olaf Lessenich.
+
+xmailgun is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+
+xmailgun is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License along with xmailgun. If not, see <https://www.gnu.org/licenses/>.
+
+
+.SH BUGS
+       Please report any bugs or issues to xai@linux.com.
